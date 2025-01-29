@@ -11,10 +11,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(EntityRenderer.class)
 public class MixinEntity {
-    @Inject(method = "shouldRender", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "shouldRender", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/Entity;shouldRender(DDD)Z"), cancellable = true)
     <T extends Entity> void render(T entity, Frustum frustum, double x, double y, double z, CallbackInfoReturnable<Boolean> cir) {
-        if (NoRenderClient.INSTANCE.getDisabledEntities().stream()
-                .anyMatch(disabledEntity -> disabledEntity.equals(entity.getType().toString().toLowerCase()))) {
+        if (NoRenderClient.INSTANCE.shouldSkipRender(entity)) {
             cir.setReturnValue(false);
             cir.cancel();
         }
