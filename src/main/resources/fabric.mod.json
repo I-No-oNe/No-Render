@@ -1,0 +1,41 @@
+{
+	"schemaVersion": 1,
+	"id": "no-render",
+	"version": "${version}",
+
+	"name": "No Render",
+	"description": "This is an example description! Tell everyone what your mod is about!",
+	"authors": [
+		"I-No-oNe"
+	],
+	"contact": {
+		"homepage": "https://i-no-one.github.io/",
+		"sources": "https://github.com/I-No-oNe/No-Render"
+	},
+
+	"license": "MIT",
+	"icon": "assets/no-render/icon.png",
+
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			{
+				"adapter": "kotlin",
+				"value": "net.i_no_am.render.NoRenderClient::onInitializeClient"
+			}
+		]
+	},
+	"mixins": [
+		"no-render.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.16.10",
+		"minecraft": "~1.21.4",
+		"java": ">=21",
+		"fabric-api": "*",
+		"fabric-language-kotlin": "*"
+	},
+	"suggests": {
+		"another-mod": "*"
+	}
+}

@@ -1,0 +1,14 @@
+{
+	"required": true,
+	"minVersion": "0.8",
+	"package": "net.i_no_am.render.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"mixins": [
+	],
+	"client": [
+		"MixinEntity"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}
