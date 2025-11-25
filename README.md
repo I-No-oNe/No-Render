@@ -5,6 +5,7 @@ This mod is a simple mod that disables the rendering of the game
 How to use:
 write /no-render in the chat,then you will see 4 options:
   add -> add entity to the no-render list
+  remove all -> remove every entity inside the config
   remove -> remove entity from the no-render list
   list -> list all the entities that are not rendered
   toggle -> toggle the mod on/off
