@@ -2,133 +2,83 @@ package net.i_no_am.render
 
 import com.mojang.brigadier.Command.SINGLE_SUCCESS
 import com.mojang.brigadier.CommandDispatcher
-import com.mojang.brigadier.arguments.StringArgumentType
+import com.mojang.brigadier.arguments.StringArgumentType.getString
+import com.mojang.brigadier.arguments.StringArgumentType.string
 import com.mojang.brigadier.suggestion.SuggestionProvider
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands.argument
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.i_no_am.render.ColorUtils.GREEN
 import net.i_no_am.render.ColorUtils.PREFIX
 import net.i_no_am.render.ColorUtils.RED
-import net.minecraft.registry.Registries
-import net.minecraft.text.Text
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.network.chat.Component.literal as text
 
 object NoRenderCommand {
 
     fun registerCommands() {
-        ClientCommandRegistrationCallback.EVENT.register { dispatcher, _ ->
-            register(dispatcher)
-        }
+        ClientCommandRegistrationCallback.EVENT.register { dispatcher, _ -> register(dispatcher) }
     }
 
     private fun register(dispatcher: CommandDispatcher<FabricClientCommandSource>) {
+        val validNames = BuiltInRegistries.ENTITY_TYPE.keySet().map { it.path }.toSet() +
+                BuiltInRegistries.BLOCK_ENTITY_TYPE.keySet().map { it.path }.toSet()
 
-        // All valid entity + block entity names (clean, no namespace)
-        val validNames: Set<String> = buildSet {
-            Registries.ENTITY_TYPE.ids.forEach { add(it.path) }
-            Registries.BLOCK_ENTITY_TYPE.ids.forEach { add(it.path) }
+        val allEntitiesSuggestion = SuggestionProvider<FabricClientCommandSource> { _, b ->
+            validNames.forEach { b.suggest(it) }; b.buildFuture()
         }
-
-        val allEntitiesSuggestion = SuggestionProvider<FabricClientCommandSource> { _, builder ->
-            validNames.forEach { builder.suggest(it) }
-            builder.buildFuture()
-        }
-
-        val disabledEntitiesSuggestion = SuggestionProvider<FabricClientCommandSource> { _, builder ->
-            NoRenderClient.disabledEntities.forEach { builder.suggest(it) }
-            builder.buildFuture()
+        val disabledEntitiesSuggestion = SuggestionProvider<FabricClientCommandSource> { _, b ->
+            NoRenderClient.disabledEntities.forEach { b.suggest(it) }; b.buildFuture()
         }
 
         dispatcher.register(
-            ClientCommandManager.literal("no-render")
+            literal("no-render")
+                .then(literal("add").then(argument("entity", string()).suggests(allEntitiesSuggestion).executes { ctx ->
+                    val raw = getString(ctx, "entity").trim().lowercase()
+                    val src = ctx.source
 
-                // ---------------- ADD ----------------
-                .then(
-                    ClientCommandManager.literal("add")
-                        .then(
-                            ClientCommandManager.argument("entity", StringArgumentType.string())
-                                .suggests(allEntitiesSuggestion)
-                                .executes { context ->
-                                    val raw = StringArgumentType.getString(context, "entity")
-                                        .trim().lowercase()
-
-                                    if (raw !in validNames) {
-                                        context.source.sendFeedback(Text.of(PREFIX + RED + "'$raw' is not a valid entity"))
-                                        return@executes SINGLE_SUCCESS
-                                    }
-
-                                    if (!NoRenderClient.disabledEntities.add(raw)) {
-                                        context.source.sendFeedback(Text.of(PREFIX + RED + "'$raw' is already disabled"))
-                                        return@executes SINGLE_SUCCESS
-                                    }
-
-                                    NoRenderClient.saveConfig()
-                                    context.source.sendFeedback(Text.of("$PREFIX Added ${GREEN}$raw"))
-                                    SINGLE_SUCCESS
-                                }
-                        )
-                )
-
-                // ---------------- REMOVE ----------------
-                .then(
-                    ClientCommandManager.literal("remove")
-                        .then(
-                            ClientCommandManager.argument("entity", StringArgumentType.string())
-                                .suggests(disabledEntitiesSuggestion)
-                                .executes { context ->
-                                    val raw = StringArgumentType.getString(context, "entity")
-                                        .trim().lowercase()
-
-                                    if (raw !in NoRenderClient.disabledEntities) {
-                                        context.source.sendFeedback(Text.of(PREFIX + RED + "'$raw' is not in the disabled list"))
-                                        return@executes SINGLE_SUCCESS
-                                    }
-
-                                    NoRenderClient.disabledEntities.remove(raw)
-                                    NoRenderClient.saveConfig()
-                                    context.source.sendFeedback(Text.of("$PREFIX Removed ${GREEN}$raw"))
-                                    SINGLE_SUCCESS
-                                }
-                        )
-                )
-
-                // ---------------- REMOVE ALL ----------------
-                .then(
-                    ClientCommandManager.literal("remove-all")
-                        .executes { context ->
-                            NoRenderClient.disabledEntities.clear()
+                    when {
+                        raw !in validNames -> src.sendFeedback(text("$PREFIX$RED'$raw' is not a valid entity"))
+                        !NoRenderClient.disabledEntities.add(raw) -> src.sendFeedback(text("$PREFIX$RED'$raw' is already disabled"))
+                        else -> {
                             NoRenderClient.saveConfig()
-                            context.source.sendFeedback(Text.of(PREFIX + GREEN + "Cleared all disabled entities"))
-                            SINGLE_SUCCESS
+                            src.sendFeedback(text("$PREFIX Added $GREEN$raw"))
                         }
-                )
+                    }
+                    SINGLE_SUCCESS
+                }))
+                .then(literal("remove").then(argument("entity", string()).suggests(disabledEntitiesSuggestion).executes { ctx ->
+                    val raw = getString(ctx, "entity").trim().lowercase()
+                    val src = ctx.source
 
-                // ---------------- LIST ----------------
-                .then(
-                    ClientCommandManager.literal("list")
-                        .executes { context ->
-                            val list = NoRenderClient.disabledEntities
-
-                            val msg = if (list.isEmpty())
-                                PREFIX + "No entities are currently disabled."
-                            else
-                                PREFIX + "Disabled: " + list.joinToString(", ")
-
-                            context.source.sendFeedback(Text.of(msg))
-                            SINGLE_SUCCESS
-                        }
-                )
-
-                // ---------------- TOGGLE ----------------
-                .then(
-                    ClientCommandManager.literal("toggle")
-                        .executes { context ->
-                            NoRenderClient.enabled = !NoRenderClient.enabled
-                            val state = if (NoRenderClient.enabled) GREEN + "enabled" else RED + "disabled"
-                            context.source.sendFeedback(Text.of(PREFIX + "No Render is now $state"))
-                            SINGLE_SUCCESS
-                        }
-                )
+                    if (raw !in NoRenderClient.disabledEntities) {
+                        src.sendFeedback(text("$PREFIX$RED'$raw' is not in the disabled list"))
+                    } else {
+                        NoRenderClient.disabledEntities.remove(raw)
+                        NoRenderClient.saveConfig()
+                        src.sendFeedback(text("$PREFIX Removed $GREEN$raw"))
+                    }
+                    SINGLE_SUCCESS
+                }))
+                .then(literal("remove-all").executes { ctx ->
+                    NoRenderClient.disabledEntities.clear()
+                    NoRenderClient.saveConfig()
+                    ctx.source.sendFeedback(text("$PREFIX${GREEN}Cleared all disabled entities"))
+                    SINGLE_SUCCESS
+                })
+                .then(literal("list").executes { ctx ->
+                    val list = NoRenderClient.disabledEntities
+                    val msg = if (list.isEmpty()) "No entities are currently disabled." else "Disabled: ${list.joinToString(", ")}"
+                    ctx.source.sendFeedback(text(PREFIX + msg))
+                    SINGLE_SUCCESS
+                })
+                .then(literal("toggle").executes { ctx ->
+                    NoRenderClient.enabled = !NoRenderClient.enabled
+                    val state = if (NoRenderClient.enabled) "${GREEN}enabled" else "${RED}disabled"
+                    ctx.source.sendFeedback(text("${PREFIX}No Render is now $state"))
+                    SINGLE_SUCCESS
+                })
         )
     }
 }

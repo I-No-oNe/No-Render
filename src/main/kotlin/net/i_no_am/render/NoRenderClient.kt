@@ -1,22 +1,21 @@
 package net.i_no_am.render
 
 import net.fabricmc.api.ClientModInitializer
-import net.minecraft.block.entity.BlockEntityType
-import net.minecraft.entity.Entity
-import net.minecraft.registry.Registries
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.world.entity.Entity
+import net.minecraft.world.level.block.entity.BlockEntityType
 import java.io.File
 import java.util.logging.Logger
 
 object NoRenderClient : ClientModInitializer {
-
     val disabledEntities = mutableSetOf<String>()
     private val configFile = File("config/no-render.yml")
-    val logger: Logger? = Logger.getLogger("no-render")
+    val logger: Logger = Logger.getLogger("no-render")
     var enabled = true
 
     override fun onInitializeClient() {
         loadConfig()
-        logger?.info("[No Render] Loaded Config!")
+        logger.info("[No Render] Loaded Config!")
         NoRenderCommand.registerCommands()
     }
 
@@ -24,34 +23,21 @@ object NoRenderClient : ClientModInitializer {
         if (!configFile.exists()) {
             configFile.parentFile.mkdirs()
             configFile.writeText("# Disabled entities:\n")
+            return
         }
-
         disabledEntities.clear()
-
-        disabledEntities.addAll(
-            configFile.readLines()
-                .filter { it.isNotBlank() && !it.startsWith("#") }
-                .map { it.trim().lowercase() }
-        )
+        disabledEntities += configFile.readLines()
+            .filter { it.isNotBlank() && !it.startsWith("#") }
+            .map { it.trim().lowercase() }
     }
 
     fun saveConfig() {
-        val sorted = disabledEntities.toList().sorted()
-        configFile.writeText("# Disabled entities:\n")
-        configFile.appendText(sorted.joinToString("\n"))
+        configFile.writeText("# Disabled entities:\n" + disabledEntities.sorted().joinToString("\n"))
     }
 
-    // ENTITY RENDER CHECK
-    fun shouldSkipRender(entity: Entity): Boolean {
-        if (!enabled) return false
-        val id = Registries.ENTITY_TYPE.getId(entity.type).path ?: return false
-        return id.lowercase() in disabledEntities
-    }
+    fun shouldSkipRender(entity: Entity): Boolean = enabled &&
+            BuiltInRegistries.ENTITY_TYPE.getKey(entity.type).path.lowercase() in disabledEntities
 
-    // BLOCK ENTITY RENDER CHECK
-    fun shouldSkipRender(entityType: BlockEntityType<*>): Boolean {
-        if (!enabled) return false
-        val id = Registries.BLOCK_ENTITY_TYPE.getId(entityType)?.path ?: return false
-        return id.lowercase() in disabledEntities
-    }
+    fun shouldSkipRender(entityType: BlockEntityType<*>): Boolean = enabled &&
+            BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(entityType)?.path?.lowercase() in disabledEntities
 }

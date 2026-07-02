@@ -4,7 +4,7 @@
 	"version": "${version}",
 
 	"name": "No Render",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"description": "Disables rendering for specific entities and block entities.",
 	"authors": [
 		"I-No-oNe"
 	],
@@ -21,7 +21,7 @@
 		"client": [
 			{
 				"adapter": "kotlin",
-				"value": "net.i_no_am.render.NoRenderClient::onInitializeClient"
+				"value": "net.i_no_am.render.NoRenderClient"
 			}
 		]
 	},
@@ -29,13 +29,10 @@
 		"no-render.mixins.json"
 	],
 	"depends": {
-		"fabricloader": ">=0.17",
-		"minecraft": "~1.21.9",
-		"java": ">=21",
+		"fabricloader": ">=0.19.3",
+		"minecraft": ">=26.2",
+		"java": ">=25",
 		"fabric-api": "*",
 		"fabric-language-kotlin": "*"
-	},
-	"suggests": {
-		"another-mod": "*"
 	}
 }

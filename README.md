@@ -1,6 +1,9 @@
 # No Render Mod
+
 ##### My First Kotlin Mod 🎉
-This mod is a simple mod that disables the rendering of the game
+
+> This mod is a simple mod that disables the rendering of the game
+---------------------
 ```yml
 How to use:
 write /no-render in the chat,then you will see 4 options:
